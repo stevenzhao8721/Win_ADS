@@ -12,6 +12,7 @@ namespace Win_ADS
     public class ADSRead
     {
         static TcAdsClient Tcads = ADS.Tcads;
+        static int w = 2;
         public static T ReadSingle<T>(string PLCName)
         {
             string plcname = "." + PLCName;
