@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -28,7 +29,7 @@ namespace Win_ADS
 
         }
 
-        public static T[] ReadArray<T>(int Size, string PLCName)
+        public static T[] ReadArray<T>(string PLCName, int Size)
         {
             try
             {
@@ -42,6 +43,38 @@ namespace Win_ADS
                 return PLCvalue;
             }
 
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 读取大数组数据，一般是曲线数据
+        /// </summary>
+        /// <param name="PLCName"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public float[] ReadArrayValue_Real(string PLCName, int size)
+        {
+            try
+            {
+                int handle = Tcads.CreateVariableHandle(PLCName);
+                float[] Curvearray = new float[size];
+                // AdsStream which gets the data
+                AdsStream dataStream = new AdsStream(size * 4);
+                BinaryReader binRead = new BinaryReader(dataStream);
+                //read comlpete Array 
+                Tcads.Read(handle, dataStream);
+
+                dataStream.Position = 0;
+                for (int i = 0; i < size; i++)
+                {
+                    //保留3位小数
+                    Curvearray[i] = binRead.ReadSingle();
+                }
+                return Curvearray;
+            }
             catch
             {
                 return null;

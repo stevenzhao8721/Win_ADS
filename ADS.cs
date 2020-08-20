@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -35,6 +36,7 @@ namespace Win_ADS
             {
                 Tcads = new TcAdsClient();
                 Tcads.AdsNotificationEx += new AdsNotificationExEventHandler(ads_callback);
+                Tcads.AdsNotification += new AdsNotificationEventHandler(ads_array_callback);
                 try
                 {
                     Tcads.Connect(adsAdress, 801);
@@ -46,6 +48,11 @@ namespace Win_ADS
                 }
             }
             return ConnectOneTime;
+        }
+
+        private static void ads_array_callback(object sender, AdsNotificationEventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -68,13 +75,13 @@ namespace Win_ADS
                 try
                 {
                     string name = item.Name;
-                    x.VariableName = name;
-                    object value = item.GetValue(model, null);
-                    x.PLCName = "." + name.Split('_')[1];
-                    x.PLCType = GetPLCType(x.PLCName);
+                    x.VariableName = name;                   
                     //如果是订阅型变量
                     if (name.StartsWith("Sub"))
                     {
+                        object value = item.GetValue(model, null);
+                        x.PLCName = "." + name.Split('_')[1];
+                        x.PLCType = GetPLCType(x.PLCName);
                         switch (x.PLCType)
                         {
                             case "BOOL":
@@ -176,6 +183,19 @@ namespace Win_ADS
             catch
             {
                 return "";
+            }
+        }
+
+        public static void readtestArray(string plcname)
+        {
+            int handle = Tcads.CreateVariableHandle(plcname);
+            AdsStream adsst = new AdsStream(20);
+            BinaryReader bread = new BinaryReader(adsst);
+            Tcads.Read(handle, adsst);
+            bool[] x = new bool[20];
+            for(int i=0;i<20;i++)
+            {
+                x[i] = bread.ReadBoolean();
             }
         }
     }
