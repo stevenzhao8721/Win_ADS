@@ -67,10 +67,10 @@ namespace Win_ADS
         {
             e.DataStream.Position = e.Offset;
             TData data = (TData)e.UserData;
-
+            ArrayDataSet(data, e.DataStream);
         }
 
-        private void ArrayDataSet(TData data,AdsStream adsStream)
+        private static void ArrayDataSet(TData data,AdsStream adsStream)
         {
             string typeName = data.PLCType;
             BinaryReader binaryReader = new BinaryReader(adsStream);
@@ -138,7 +138,7 @@ namespace Win_ADS
         }
 
 
-        private void SetArrayValue<T>(TData data, T[] value)
+        private static void SetArrayValue<T>(TData data, T[] value)
         {
             string variableName = data.VariableName;
             Type classtype = data.ClassType;
@@ -146,7 +146,12 @@ namespace Win_ADS
             PropertyInfo pinfo = classtype.GetProperty(variableName);
             if(pinfo!=null)
             {
-                pinfo.SetValue(calledClass, value, null);
+                //如果是单一变量
+                if(value.Length==1)
+                    pinfo.SetValue(calledClass, value[0], null);
+                //数组变量
+                else
+                    pinfo.SetValue(calledClass, value, null);
             }
         }
 
@@ -176,49 +181,61 @@ namespace Win_ADS
                     object value = item.GetValue(model, null);
                     x.PLCName = "." + name.Split('_')[1];
                     //如果是数组类型
-                    if (item.PropertyType.IsArray)
-                    {
-                        ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
-                        //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
-                        int streamsize = info.Size;
-                        x.PLCType = item.PropertyType.Name.Split('[')[0];
-                        AddArrayValue(x);
-                    }
-                    //如果是单一变量
-                    else
-                    {
-                        x.PLCType = GetPLCType(x.PLCName);
+                    //if (item.PropertyType.IsArray)
+                    //{
                         try
                         {
-                            switch (x.PLCType)
-                            {
-                                case "BOOL":
-                                    t = typeof(bool);
-                                    break;
-                                case "REAL":
-                                    t = typeof(float);
-                                    break;
-                                case "UINT":
-                                    t = typeof(ushort);
-                                    break;
-                                case "UDINT":
-                                    t = typeof(uint);
-                                    break;
-                                case "USINT":
-                                    t = typeof(byte);
-                                    break;
-                                default:
-                                    t = typeof(object);
-                                    break;
-                            }
-                            Addvalue(t, x);
-
+                            ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
+                            //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
+                            x.streamsize = info.Size;
+                            x.PLCType = item.PropertyType.Name.Split('[')[0];
+                            AddArrayValue(x);
                         }
                         catch
                         {
 
                         }
-                    }
+                        
+                    //}
+                    //如果是单一变量
+                    //else
+                    //{
+                    //    ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
+                    //    //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
+                    //    x.streamsize = info.Size;
+                    //    x.PLCType = item.PropertyType.Name.Split('[')[0];
+                    //    x.PLCType = GetPLCType(x.PLCName);
+                    //    try
+                    //    {
+                    //        switch (x.PLCType)
+                    //        {
+                    //            case "BOOL":
+                    //                t = typeof(bool);
+                    //                break;
+                    //            case "REAL":
+                    //                t = typeof(float);
+                    //                break;
+                    //            case "UINT":
+                    //                t = typeof(ushort);
+                    //                break;
+                    //            case "UDINT":
+                    //                t = typeof(uint);
+                    //                break;
+                    //            case "USINT":
+                    //                t = typeof(byte);
+                    //                break;
+                    //            default:
+                    //                t = typeof(object);
+                    //                break;
+                    //        }
+                    //        Addvalue(t, x);
+
+                    //    }
+                    //    catch
+                    //    {
+
+                    //    }
+                    //}
                 }
             }
         }
