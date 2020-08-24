@@ -31,12 +31,6 @@ namespace Win_ADS
             public int streamsize;
         }
 
-        partial struct SubArraySet
-        {
-            public int streamsize;
-            public string variableType;
-        }
-
         /// <summary>
         /// 连接到beckhoff PLC
         /// </summary>
@@ -48,8 +42,7 @@ namespace Win_ADS
             if (!ConnectOneTime)
             {
                 Tcads = new TcAdsClient();
-                Tcads.AdsNotificationEx += new AdsNotificationExEventHandler(ads_callback);
-                Tcads.AdsNotification += new AdsNotificationEventHandler(ads_array_callback);
+                Tcads.AdsNotification += new AdsNotificationEventHandler(ads_callback);
                 try
                 {
                     Tcads.Connect(adsAdress, 801);
@@ -63,30 +56,30 @@ namespace Win_ADS
             return ConnectOneTime;
         }
 
-        private static void ads_array_callback(object sender, AdsNotificationEventArgs e)
+        private static void ads_callback(object sender, AdsNotificationEventArgs e)
         {
             e.DataStream.Position = e.Offset;
             TData data = (TData)e.UserData;
-            ArrayDataSet(data, e.DataStream);
+            PLCDataChanged(data, e.DataStream);
         }
 
-        private static void ArrayDataSet(TData data,AdsStream adsStream)
+        private static void PLCDataChanged(TData data, AdsStream adsStream)
         {
             string typeName = data.PLCType;
             BinaryReader binaryReader = new BinaryReader(adsStream);
             int streamsize = data.streamsize;
             int loopsize = streamsize;
-          
+
             switch (typeName)
             {
                 case "SByte":
                     loopsize = streamsize;
                     sbyte[] sbdata = new sbyte[loopsize];
-                    for(int i=0;i<loopsize;i++)
+                    for (int i = 0; i < loopsize; i++)
                     {
                         sbdata[i] = binaryReader.ReadSByte();
                     }
-                    SetArrayValue(data, sbdata);
+                    SetValueToViewModel(data, sbdata);
                     break;
                 case "Byte":
                     streamsize = 1;
@@ -98,7 +91,7 @@ namespace Win_ADS
                     {
                         bdata[i] = binaryReader.ReadBoolean();
                     }
-                    SetArrayValue(data, bdata);
+                    SetValueToViewModel(data, bdata);
                     break;
                 case "Int16":
                     streamsize = 2;
@@ -130,7 +123,7 @@ namespace Win_ADS
             }
         }
 
-        private static void AddArrayValue(TData data)
+        private static void AddSubValue(TData data)
         {
             adsStreams[adsIndex] = new AdsStream(data.streamsize);
             Tcads.AddDeviceNotification(data.PLCName, adsStreams[adsIndex], 0, data.streamsize, AdsTransMode.OnChange, 100, 0, data);
@@ -138,16 +131,16 @@ namespace Win_ADS
         }
 
 
-        private static void SetArrayValue<T>(TData data, T[] value)
+        private static void SetValueToViewModel<T>(TData data, T[] value)
         {
             string variableName = data.VariableName;
             Type classtype = data.ClassType;
             object calledClass = data.loadClass;
             PropertyInfo pinfo = classtype.GetProperty(variableName);
-            if(pinfo!=null)
+            if (pinfo != null)
             {
                 //如果是单一变量
-                if(value.Length==1)
+                if (value.Length == 1)
                     pinfo.SetValue(calledClass, value[0], null);
                 //数组变量
                 else
@@ -180,149 +173,19 @@ namespace Win_ADS
                 {
                     object value = item.GetValue(model, null);
                     x.PLCName = "." + name.Split('_')[1];
-                    //如果是数组类型
-                    //if (item.PropertyType.IsArray)
-                    //{
-                        try
-                        {
-                            ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
-                            //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
-                            x.streamsize = info.Size;
-                            x.PLCType = item.PropertyType.Name.Split('[')[0];
-                            AddArrayValue(x);
-                        }
-                        catch
-                        {
+                    try
+                    {
+                        ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
+                        //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
+                        x.streamsize = info.Size;
+                        x.PLCType = item.PropertyType.Name.Split('[')[0];
+                        AddSubValue(x);
+                    }
+                    catch
+                    {
 
-                        }
-                        
-                    //}
-                    //如果是单一变量
-                    //else
-                    //{
-                    //    ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
-                    //    //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
-                    //    x.streamsize = info.Size;
-                    //    x.PLCType = item.PropertyType.Name.Split('[')[0];
-                    //    x.PLCType = GetPLCType(x.PLCName);
-                    //    try
-                    //    {
-                    //        switch (x.PLCType)
-                    //        {
-                    //            case "BOOL":
-                    //                t = typeof(bool);
-                    //                break;
-                    //            case "REAL":
-                    //                t = typeof(float);
-                    //                break;
-                    //            case "UINT":
-                    //                t = typeof(ushort);
-                    //                break;
-                    //            case "UDINT":
-                    //                t = typeof(uint);
-                    //                break;
-                    //            case "USINT":
-                    //                t = typeof(byte);
-                    //                break;
-                    //            default:
-                    //                t = typeof(object);
-                    //                break;
-                    //        }
-                    //        Addvalue(t, x);
-
-                    //    }
-                    //    catch
-                    //    {
-
-                    //    }
-                    //}
+                    }
                 }
-            }
-        }
-        /// <summary>
-        /// 订阅新的变量
-        /// </summary>
-        /// <param name="PlcName"></param>
-        /// <param name="type"></param>
-        /// <param name="data"></param>
-        private static void Addvalue(Type type, TData data)
-        {
-            Tcads.AddDeviceNotificationEx(data.PLCName, AdsTransMode.OnChange, 100, 0, data, type);
-        }
-
-
-        private static void ads_callback(object sender, AdsNotificationExEventArgs e)
-        {
-            try
-            {
-                TData td = (TData)e.UserData;
-                td.value = e.Value;
-                UpdateSignelVariable(td);
-            }
-            catch (Exception ex)
-            {
-
-            }
-        }
-        private static void UpdateSignelVariable(TData td)
-        {
-            string plctype = td.PLCType;
-            string variableName = td.VariableName;
-            Type type = td.ClassType;
-            PropertyInfo pinfo = type.GetProperty(variableName);
-            if (pinfo != null)
-            {
-                switch (plctype)
-                {
-                    case "BOOL":
-                        bool Bvalue = Convert.ToBoolean(td.value);
-                        pinfo.SetValue(td.loadClass, Bvalue, null);
-                        break;
-                    case "REAL":
-                        float Fvalue = Convert.ToSingle(td.value);
-                        pinfo.SetValue(td.loadClass, Fvalue, null);
-                        break;
-                    case "UINT":
-                        ushort Uvalue = Convert.ToUInt16(td.value);
-                        pinfo.SetValue(td.loadClass, Uvalue, null);
-                        break;
-                    case "UDINT":
-                        uint UDvalue = Convert.ToUInt32(td.value);
-                        pinfo.SetValue(td.loadClass, UDvalue, null);
-                        break;
-                    case "USINT":
-                        byte USvalue = Convert.ToByte(td.value);
-                        pinfo.SetValue(td.loadClass, USvalue, null);
-                        break;
-                }
-            }
-        }
-
-
-        public static string GetPLCType(string plcname)
-        {
-            try
-            {
-                ITcAdsSymbol x = Tcads.ReadSymbolInfo(plcname);
-                string type = x.Type.ToString();
-                return type;
-            }
-            catch(Exception ex)
-            {
-                return "";
-            }
-        }
-
-        public static void readtestArray(string plcname)
-        {
-            int handle = Tcads.CreateVariableHandle(plcname);
-            AdsStream adsst = new AdsStream(20);
-            BinaryReader bread = new BinaryReader(adsst);
-            Tcads.Read(handle, adsst);
-            bool[] x = new bool[20];
-            for (int i = 0; i < 20; i++)
-            {
-                x[i] = bread.ReadBoolean();
             }
         }
     }
