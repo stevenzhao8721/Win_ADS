@@ -94,28 +94,76 @@ namespace Win_ADS
                     SetValueToViewModel(data, bdata);
                     break;
                 case "Int16":
-                    streamsize = 2;
+                    loopsize = streamsize / 2;
+                    short[] int16data = new Int16[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        int16data[i] = binaryReader.ReadInt16();
+                    }
+                    SetValueToViewModel(data, int16data);
                     break;
                 case "UInt16":
-                    streamsize = 2;
+                    loopsize = streamsize / 2;
+                    ushort[] uint16data = new ushort[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        uint16data[i] = binaryReader.ReadUInt16();
+                    }
+                    SetValueToViewModel(data, uint16data);
                     break;
                 case "Single":
-                    streamsize = 4;
+                    loopsize = streamsize / 4;
+                    float[] floatdata = new float[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        floatdata[i] = binaryReader.ReadSingle();
+                    }
+                    SetValueToViewModel(data, floatdata);
                     break;
                 case "Int32":
-                    streamsize = 4;
+                    loopsize = streamsize / 4;
+                    int[] intdata = new int[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        intdata[i] = binaryReader.ReadInt32();
+                    }
+                    SetValueToViewModel(data, intdata);
                     break;
                 case "UInt32":
-                    streamsize = 4;
+                    loopsize = streamsize / 4;
+                    uint[] uintdata = new uint[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        uintdata[i] = binaryReader.ReadUInt32();
+                    }
+                    SetValueToViewModel(data, uintdata);
                     break;
                 case "Int64":
-                    streamsize = 8;
+                    loopsize = streamsize / 8;
+                    long[] longdata = new long[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        longdata[i] = binaryReader.ReadInt64();
+                    }
+                    SetValueToViewModel(data, longdata);
                     break;
                 case "UInt64":
-                    streamsize = 8;
+                    loopsize = streamsize / 8;
+                    ulong[] ulongdata = new ulong[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        ulongdata[i] = binaryReader.ReadUInt64();
+                    }
+                    SetValueToViewModel(data, ulongdata);
                     break;
                 case "Double":
-                    streamsize = 8;
+                    loopsize = streamsize / 8;
+                    double[] doubledata = new double[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        doubledata[i] = binaryReader.ReadDouble();
+                    }
+                    SetValueToViewModel(data, doubledata);
                     break;
                 default:
                     streamsize = 4;
