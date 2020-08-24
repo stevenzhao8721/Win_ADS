@@ -12,7 +12,6 @@ namespace Win_ADS
     public class ADSRead
     {
         static TcAdsClient Tcads = ADS.Tcads;
-        static int w = 2;
         public static T ReadSingle<T>(string PLCName)
         {
             string plcname = "." + PLCName;
@@ -57,7 +56,7 @@ namespace Win_ADS
         /// <param name="PLCName"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        public float[] ReadArrayValue_Real(string PLCName, int size)
+        public static float[] ReadArrayValue_Real(string PLCName, int size)
         {
             try
             {

@@ -42,7 +42,6 @@ namespace Win_ADS
                     WriteSingle(PLCName + plcindex, arrayvalue[j]);
                 }
             }
-
             catch
             {
             }

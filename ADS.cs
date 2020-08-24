@@ -224,7 +224,6 @@ namespace Win_ADS
                     try
                     {
                         ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
-                        //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
                         x.streamsize = info.Size;
                         x.PLCType = item.PropertyType.Name.Split('[')[0];
                         AddSubValue(x);
