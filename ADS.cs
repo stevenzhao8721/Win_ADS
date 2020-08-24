@@ -1,7 +1,9 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +14,8 @@ namespace Win_ADS
     public class ADS
     {
         private static bool ConnectOneTime = false;
+        private static AdsStream[] adsStreams;
+        private static int adsIndex = 0;
 
         public static TcAdsClient Tcads { get; private set; }
 
@@ -23,6 +27,13 @@ namespace Win_ADS
             public string PLCType;
             public object value;
             public object loadClass;
+            public int streamsize;
+        }
+
+        partial struct SubArraySet
+        {
+            public int streamsize;
+            public string variableType;
         }
 
         /// <summary>
@@ -30,9 +41,10 @@ namespace Win_ADS
         /// </summary>
         /// <param name="adsAdress">Twincat Adress地址</param>
         /// <returns></returns>
-        public static bool Connect(string adsAdress)
+        public static bool Connect(string adsAdress, int AdsstreamSize)
         {
-            if(!ConnectOneTime)
+            adsStreams = new AdsStream[AdsstreamSize];
+            if (!ConnectOneTime)
             {
                 Tcads = new TcAdsClient();
                 Tcads.AdsNotificationEx += new AdsNotificationExEventHandler(ads_callback);
@@ -52,7 +64,113 @@ namespace Win_ADS
 
         private static void ads_array_callback(object sender, AdsNotificationEventArgs e)
         {
-            throw new NotImplementedException();
+            e.DataStream.Position = e.Offset;
+            TData data = (TData)e.UserData;
+
+        }
+
+        private void ArrayDataSet(TData data,AdsStream adsStream)
+        {
+            string typeName = data.PLCType;
+            BinaryReader binaryReader = new BinaryReader(adsStream);
+            int streamsize = 1;
+            switch (typeName)
+            {
+                case "SByte":
+                    streamsize = 1;
+                    break;
+                case "Byte":
+                    streamsize = 1;
+                    break;
+                case "Boolean":
+                    streamsize = 1;
+                    break;
+                case "Int16":
+                    streamsize = 2;
+                    break;
+                case "UInt16":
+                    streamsize = 2;
+                    break;
+                case "Single":
+                    streamsize = 4;
+                    break;
+                case "Int32":
+                    streamsize = 4;
+                    break;
+                case "UInt32":
+                    streamsize = 4;
+                    break;
+                case "Int64":
+                    streamsize = 8;
+                    break;
+                case "UInt64":
+                    streamsize = 8;
+                    break;
+                case "Double":
+                    streamsize = 8;
+                    break;
+                default:
+                    streamsize = 4;
+                    break;
+            }
+        }
+
+        private static void AddArrayValue(TData data)
+        {
+            adsStreams[adsIndex] = new AdsStream(data.streamsize);
+            Tcads.AddDeviceNotification(data.PLCName, adsStreams[adsIndex], 0, data.streamsize, AdsTransMode.OnChange, 100, 0, data);
+            adsIndex++;
+        }
+
+
+        private static int SetAdsStreamSize(string typeName)
+        {
+            int size = 1;
+            switch (typeName)
+            {
+                case "SByte":
+                    size = 1;
+                    break;
+                case "Byte":
+                    size = 1;
+                    break;
+                case "Boolean":
+                    size = 1;
+                    break;
+                case "Int16":
+                    size = 2;
+                    break;
+                case "UInt16":
+                    size = 2;
+                    break;
+                case "Single":
+                    size = 4;
+                    break;
+                case "Int32":
+                    size = 4;
+                    break;
+                case "UInt32":
+                    size = 4;
+                    break;
+                case "Int64":
+                    size = 8;
+                    break;
+                case "UInt64":
+                    size = 8;
+                    break;
+                case "Double":
+                    size = 8;
+                    break;
+                default:
+                    size = 4;
+                    break;
+            }
+            return size;
+        }
+
+        private void SetArrayValue()
+        {
+
         }
 
         /// <summary>
@@ -69,46 +187,62 @@ namespace Win_ADS
             x.PLCName = "";
             x.PLCType = "";
             x.value = null;
+            x.streamsize = 0;
+
             PropertyInfo[] PropertyList = x.ClassType.GetProperties();
             foreach (PropertyInfo item in PropertyList)
             {
-                try
+                string name = item.Name;
+                x.VariableName = name;
+                if (name.StartsWith("Sub"))
                 {
-                    string name = item.Name;
-                    x.VariableName = name;                   
-                    //如果是订阅型变量
-                    if (name.StartsWith("Sub"))
+                    object value = item.GetValue(model, null);
+                    x.PLCName = "." + name.Split('_')[1];
+                    //如果是数组类型
+                    if (item.PropertyType.IsArray)
                     {
-                        object value = item.GetValue(model, null);
-                        x.PLCName = "." + name.Split('_')[1];
-                        x.PLCType = GetPLCType(x.PLCName);
-                        switch (x.PLCType)
-                        {
-                            case "BOOL":
-                                t = typeof(bool);
-                                break;
-                            case "REAL":
-                                t = typeof(float);
-                                break;
-                            case "UINT":
-                                t = typeof(ushort);
-                                break;
-                            case "UDINT":
-                                t = typeof(uint);
-                                break;
-                            case "USINT":
-                                t = typeof(byte);
-                                break;
-                            default:
-                                t = typeof(object);
-                                break;
-                        }
-                        Addvalue(x.PLCName, t, x);
+                        ITcAdsSymbol info = Tcads.ReadSymbolInfo(x.PLCName);
+                        //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
+                        int streamsize = info.Size;
+                        x.PLCType = item.PropertyType.Name.Split('[')[0];
+                        x.streamsize = SetAdsStreamSize(x.PLCType);
+                        AddArrayValue(x);
                     }
-                }
-                catch
-                {
+                    //如果是单一变量
+                    else
+                    {
+                        x.PLCType = GetPLCType(x.PLCName);
+                        try
+                        {
+                            switch (x.PLCType)
+                            {
+                                case "BOOL":
+                                    t = typeof(bool);
+                                    break;
+                                case "REAL":
+                                    t = typeof(float);
+                                    break;
+                                case "UINT":
+                                    t = typeof(ushort);
+                                    break;
+                                case "UDINT":
+                                    t = typeof(uint);
+                                    break;
+                                case "USINT":
+                                    t = typeof(byte);
+                                    break;
+                                default:
+                                    t = typeof(object);
+                                    break;
+                            }
+                            Addvalue(t, x);
 
+                        }
+                        catch
+                        {
+
+                        }
+                    }
                 }
             }
         }
@@ -118,9 +252,9 @@ namespace Win_ADS
         /// <param name="PlcName"></param>
         /// <param name="type"></param>
         /// <param name="data"></param>
-        private static void Addvalue(string PlcName, Type type, TData data)
+        private static void Addvalue(Type type, TData data)
         {
-            Tcads.AddDeviceNotificationEx(PlcName, AdsTransMode.OnChange, 100, 0, data, type);
+            Tcads.AddDeviceNotificationEx(data.PLCName, AdsTransMode.OnChange, 100, 0, data, type);
         }
 
 
@@ -172,7 +306,7 @@ namespace Win_ADS
         }
 
 
-        private static string GetPLCType(string plcname)
+        public static string GetPLCType(string plcname)
         {
             try
             {
@@ -180,7 +314,7 @@ namespace Win_ADS
                 string type = x.Type.ToString();
                 return type;
             }
-            catch
+            catch(Exception ex)
             {
                 return "";
             }
@@ -193,7 +327,7 @@ namespace Win_ADS
             BinaryReader bread = new BinaryReader(adsst);
             Tcads.Read(handle, adsst);
             bool[] x = new bool[20];
-            for(int i=0;i<20;i++)
+            for (int i = 0; i < 20; i++)
             {
                 x[i] = bread.ReadBoolean();
             }

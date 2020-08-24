@@ -19,6 +19,7 @@ namespace Win_ADS
             try
             {
                 int handle = Tcads.CreateVariableHandle(plcname);
+                
                 T returnData = (T)Tcads.ReadAny(handle, typeof(T));
                 Tcads.DeleteVariableHandle(handle);
                 return returnData;
