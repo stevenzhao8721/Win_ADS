@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading.Tasks;
 using TwinCAT.Ads;
@@ -73,17 +74,31 @@ namespace Win_ADS
         {
             string typeName = data.PLCType;
             BinaryReader binaryReader = new BinaryReader(adsStream);
-            int streamsize = 1;
+            int streamsize = data.streamsize;
+            int loopsize = streamsize;
+          
             switch (typeName)
             {
                 case "SByte":
-                    streamsize = 1;
+                    loopsize = streamsize;
+                    sbyte[] sbdata = new sbyte[loopsize];
+                    for(int i=0;i<loopsize;i++)
+                    {
+                        sbdata[i] = binaryReader.ReadSByte();
+                    }
+                    SetArrayValue(data, sbdata);
                     break;
                 case "Byte":
                     streamsize = 1;
                     break;
                 case "Boolean":
-                    streamsize = 1;
+                    loopsize = streamsize;
+                    bool[] bdata = new bool[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        bdata[i] = binaryReader.ReadBoolean();
+                    }
+                    SetArrayValue(data, bdata);
                     break;
                 case "Int16":
                     streamsize = 2;
@@ -123,54 +138,16 @@ namespace Win_ADS
         }
 
 
-        private static int SetAdsStreamSize(string typeName)
+        private void SetArrayValue<T>(TData data, T[] value)
         {
-            int size = 1;
-            switch (typeName)
+            string variableName = data.VariableName;
+            Type classtype = data.ClassType;
+            object calledClass = data.loadClass;
+            PropertyInfo pinfo = classtype.GetProperty(variableName);
+            if(pinfo!=null)
             {
-                case "SByte":
-                    size = 1;
-                    break;
-                case "Byte":
-                    size = 1;
-                    break;
-                case "Boolean":
-                    size = 1;
-                    break;
-                case "Int16":
-                    size = 2;
-                    break;
-                case "UInt16":
-                    size = 2;
-                    break;
-                case "Single":
-                    size = 4;
-                    break;
-                case "Int32":
-                    size = 4;
-                    break;
-                case "UInt32":
-                    size = 4;
-                    break;
-                case "Int64":
-                    size = 8;
-                    break;
-                case "UInt64":
-                    size = 8;
-                    break;
-                case "Double":
-                    size = 8;
-                    break;
-                default:
-                    size = 4;
-                    break;
+                pinfo.SetValue(calledClass, value, null);
             }
-            return size;
-        }
-
-        private void SetArrayValue()
-        {
-
         }
 
         /// <summary>
@@ -205,7 +182,6 @@ namespace Win_ADS
                         //TODO,已经可以获取stream的长度，接下来要把changedEvent的逻辑写一下
                         int streamsize = info.Size;
                         x.PLCType = item.PropertyType.Name.Split('[')[0];
-                        x.streamsize = SetAdsStreamSize(x.PLCType);
                         AddArrayValue(x);
                     }
                     //如果是单一变量
