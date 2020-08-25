@@ -201,7 +201,7 @@ namespace Win_ADS
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="model">class的名称，通常为调用方的this</param>
-        public static void ForeachClassProperties<T>(T model)
+        public static void SetSubscription<T>(T model)
         {
             TData x;
             Type t;
