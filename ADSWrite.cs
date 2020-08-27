@@ -26,26 +26,23 @@ namespace Win_ADS
                 Tcads.DeleteVariableHandle(handle);
             }
             catch
-            {                
+            {
+
             }
         }
 
         public static void WriteArray<T>(string PLCName, T[] value)
         {
             string plcname = "." + PLCName;
-            Task.Run(() =>
+            try
             {
-                try
-                {
-                    int handle = Tcads.CreateVariableHandle(plcname);
-                    Tcads.WriteAny(handle, value);
-                    Tcads.DeleteVariableHandle(handle);
-                }
-                catch
-                {
-                }
-            });
-            
+                int handle = Tcads.CreateVariableHandle(plcname);
+                Tcads.WriteAny(handle, value);
+                Tcads.DeleteVariableHandle(handle);
+            }
+            catch
+            {
+            }
         }
     }
 }

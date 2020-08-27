@@ -82,7 +82,13 @@ namespace Win_ADS
                     SetValueToViewModel(data, sbdata);
                     break;
                 case "Byte":
-                    streamsize = 1;
+                    loopsize = streamsize;
+                    byte[] bydata = new byte[loopsize];
+                    for (int i = 0; i < loopsize; i++)
+                    {
+                        bydata[i] = binaryReader.ReadByte();
+                    }
+                    SetValueToViewModel(data, bydata);
                     break;
                 case "Boolean":
                     loopsize = streamsize;
