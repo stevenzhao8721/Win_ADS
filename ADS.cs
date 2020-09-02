@@ -224,7 +224,7 @@ namespace Win_ADS
             TData x;
             x.ClassType = default;
             x.loadClass = "";
-            x.PLCName = "";
+            x.PLCName = "." + PlcName;
             x.PLCType = "";
             x.value = null;
             x.streamsize = 0;
@@ -232,7 +232,7 @@ namespace Win_ADS
             x.isExternal = true;
             try
             {
-                ITcAdsSymbol5 info = (ITcAdsSymbol5)Tcads.ReadSymbolInfo(PlcName);
+                ITcAdsSymbol5 info = (ITcAdsSymbol5)Tcads.ReadSymbolInfo(x.PLCName);
                 x.streamsize = info.Size;
                 if (info.TypeName.StartsWith("ARRAY"))
                 {
@@ -251,11 +251,49 @@ namespace Win_ADS
         }
 
         /// <summary>
+        /// 设置变量名与PLC变量不一致的订阅方法
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="PlcName"></param>
+        /// <param name="model"></param>
+        public static void SetSubscription_ManualPropertyNamed<T>(string PlcName, string VariableName,T model)
+        {
+            TData x;
+            x.ClassType = model.GetType();
+            x.loadClass = model;
+            x.PLCName = "." + PlcName;
+            x.PLCType = "";
+            x.value = null;
+            x.streamsize = 0;
+            x.VariableName = VariableName;
+            x.isExternal = false;
+            try
+            {
+                ITcAdsSymbol5 info = (ITcAdsSymbol5)Tcads.ReadSymbolInfo(x.PLCName);
+                x.streamsize = info.Size;
+                if (info.TypeName.StartsWith("ARRAY"))
+                {
+                    x.PLCType = info.TypeName.Split(' ')[3];
+                }
+                else
+                {
+                    x.PLCType = info.TypeName;
+                }
+                AddSubValue(x);
+            }
+            catch
+            {
+
+            }
+
+        }
+
+        /// <summary>
         /// 遍历类内的属性，把Sub开头的属性自动添加到订阅PLC
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="model">class的名称，通常为调用方的this</param>
-        public static void SetSubscription<T>(T model)
+        public static void SetSubscription_AutoPropertyNamed<T>(T model)
         {
             TData x;
             x.ClassType = model.GetType();
@@ -273,7 +311,6 @@ namespace Win_ADS
                 x.VariableName = name;
                 if (name.StartsWith("Sub"))
                 {
-                    object value = item.GetValue(model, null);
                     x.PLCName = "." + name.Split('_')[1];
                     try
                     {
