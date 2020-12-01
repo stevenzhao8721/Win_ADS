@@ -20,8 +20,8 @@ namespace Win_ADS
         private static AdsStream[] adsStreams;
         private static int adsIndex = 0;
         public delegate void ExternalPLCDataChangedEventHandler(TData data, AdsStream adsStream);
-        public static event ExternalPLCDataChangedEventHandler EnternalPLCDataChangedEvent;
-        private static void E_dataChanged(TData data, AdsStream adsStream) => EnternalPLCDataChangedEvent?.Invoke(data,adsStream);
+        public static event ExternalPLCDataChangedEventHandler ExternalPLCDataChangedEvent;
+        private static void E_dataChanged(TData data, AdsStream adsStream) => ExternalPLCDataChangedEvent?.Invoke(data,adsStream);
 
         public static TcAdsClient Tcads { get; private set; }
 
@@ -71,7 +71,7 @@ namespace Win_ADS
 
         private static void PLCDataChanged(TData data, AdsStream adsStream)
         {
-            if (data.isExternal)
+            if (!data.isExternal)
             {
                 string typeName = data.PLCType;
                 BinaryReader binaryReader = new BinaryReader(adsStream);
