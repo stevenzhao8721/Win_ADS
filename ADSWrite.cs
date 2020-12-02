@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LogFunc;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -31,9 +32,10 @@ namespace Win_ADS
                 if(typeof(T)==typeof(bool) & AutoReset)
                     TobeResetList.Add(plcname);
             }
-            catch
+            catch (Exception ex)
             {
-
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
+                
             }
         }
 
@@ -45,9 +47,10 @@ namespace Win_ADS
                 Tcads.WriteAny(handle, value);
                 Tcads.DeleteVariableHandle(handle);
             }
-            catch
+            catch (Exception ex)
             {
-
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
+                
             }
         }
 
@@ -60,8 +63,10 @@ namespace Win_ADS
                 Tcads.WriteAny(handle, value);
                 Tcads.DeleteVariableHandle(handle);
             }
-            catch
+            catch (Exception ex)
             {
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
+                
             }
         }
 
@@ -76,10 +81,18 @@ namespace Win_ADS
             AutoResetSignal.Enabled = true;
             AutoResetSignal.AutoReset = true;  
             if (enable)
+            {
                 AutoResetSignal.Start();
+                AutoResetSignal.Elapsed += new ElapsedEventHandler(AutoReset);
+            }
+                
             else
+            {
                 AutoResetSignal.Stop();
-            AutoResetSignal.Elapsed += new ElapsedEventHandler(AutoReset);
+                AutoResetSignal.Elapsed -= new ElapsedEventHandler(AutoReset);
+            }
+                
+            
         }
 
         private static void AutoReset(object sender, ElapsedEventArgs e)

@@ -11,6 +11,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading.Tasks;
 using TwinCAT.Ads;
+using LogFunc;
 
 namespace Win_ADS
 {
@@ -24,6 +25,9 @@ namespace Win_ADS
         private static void E_dataChanged(TData data, AdsStream adsStream) => ExternalPLCDataChangedEvent?.Invoke(data,adsStream);
 
         public static TcAdsClient Tcads { get; private set; }
+        public static string Logfilepath { get => _logfilepath;}
+
+        private static string _logfilepath;
 
         public struct TData
         {
@@ -41,9 +45,12 @@ namespace Win_ADS
         /// 连接到beckhoff PLC
         /// </summary>
         /// <param name="adsAdress">Twincat Adress地址</param>
+        /// <param name="AdsstreamSize">预设stream流大小</param>
+        /// <param name="logfilepath">日志文件路径</param>
         /// <returns></returns>
-        public static bool Connect(string adsAdress, int AdsstreamSize)
+        public static bool Connect(string adsAdress, string logfilepath,int AdsstreamSize=100)
         {
+            _logfilepath = logfilepath;
             adsStreams = new AdsStream[AdsstreamSize];
             if (!ConnectOneTime)
             {
@@ -54,9 +61,10 @@ namespace Win_ADS
                     Tcads.Connect(adsAdress, 801);
                     ConnectOneTime = true;
                 }
-                catch
+                catch(Exception ex)
                 {
                     ConnectOneTime = false;
+                    ErrorFile.ErrorLog(ex.Message, Logfilepath);
                 }
             }
             return ConnectOneTime;
@@ -191,28 +199,42 @@ namespace Win_ADS
 
         private static void AddSubValue(TData data)
         {
-
-            adsStreams[adsIndex] = new AdsStream(data.streamsize);
-            Tcads.AddDeviceNotification(data.PLCName, adsStreams[adsIndex], 0, data.streamsize, AdsTransMode.OnChange, 100, 0, data);
-            adsIndex++;
+            try
+            {
+                adsStreams[adsIndex] = new AdsStream(data.streamsize);
+                Tcads.AddDeviceNotification(data.PLCName, adsStreams[adsIndex], 0, data.streamsize, AdsTransMode.OnChange, 100, 0, data);
+                adsIndex++;
+            }
+            catch (Exception ex)
+            {
+                ErrorFile.ErrorLog(ex.Message, Logfilepath);
+            }
         }
 
 
         private static void SetValueToViewModel<T>(TData data, T[] value)
         {
-            string variableName = data.VariableName;
-            Type classtype = data.ClassType;
-            object calledClass = data.loadClass;
-            PropertyInfo pinfo = classtype.GetProperty(variableName);
-            if (pinfo != null)
+            try
             {
-                //如果是单一变量
-                if (value.Length == 1)
-                    pinfo.SetValue(calledClass, value[0], null);
-                //数组变量
-                else
-                    pinfo.SetValue(calledClass, value, null);
+                string variableName = data.VariableName;
+                Type classtype = data.ClassType;
+                object calledClass = data.loadClass;
+                PropertyInfo pinfo = classtype.GetProperty(variableName);
+                if (pinfo != null)
+                {
+                    //如果是单一变量
+                    if (value.Length == 1)
+                        pinfo.SetValue(calledClass, value[0], null);
+                    //数组变量
+                    else
+                        pinfo.SetValue(calledClass, value, null);
+                }
             }
+            catch (Exception ex)
+            {
+                ErrorFile.ErrorLog(ex.Message, Logfilepath);
+            }
+
         }
 
         /// <summary>
@@ -244,9 +266,9 @@ namespace Win_ADS
                 }
                 AddSubValue(x);
             }
-            catch
+            catch (Exception ex)
             {
-
+                ErrorFile.ErrorLog(ex.Message, Logfilepath);
             }
         }
 
@@ -255,6 +277,7 @@ namespace Win_ADS
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="PlcName"></param>
+        /// <param name="VariableName"></param>
         /// <param name="model"></param>
         public static void SetSubscription_ManualPropertyNamed<T>(string PlcName, string VariableName,T model)
         {
@@ -281,19 +304,20 @@ namespace Win_ADS
                 }
                 AddSubValue(x);
             }
-            catch
+            catch (Exception ex)
             {
-
+                ErrorFile.ErrorLog(ex.Message, Logfilepath);
             }
 
         }
 
         /// <summary>
-        /// 遍历类内的属性，把Sub开头的属性自动添加到订阅PLC
+        /// 变量名与PLC变量一致的订阅方法,遍历类内的属性,把Sub开头的属性自动添加到订阅PLC
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="model">class的名称，通常为调用方的this</param>
-        public static void SetSubscription_AutoPropertyNamed<T>(T model)
+        /// <returns></returns>
+        public static async Task SetSubscription_AutoPropertyNamed<T>(T model)
         {
             TData x;
             x.ClassType = model.GetType();
@@ -302,36 +326,40 @@ namespace Win_ADS
             x.PLCType = "";
             x.value = null;
             x.streamsize = 0;
+            x.VariableName = "";
             x.isExternal = false;
-
-            PropertyInfo[] PropertyList = x.ClassType.GetProperties();
-            foreach (PropertyInfo item in PropertyList)
+            await Task.Run(() =>
             {
-                string name = item.Name;
-                x.VariableName = name;
-                if (name.StartsWith("Sub"))
+                PropertyInfo[] PropertyList = x.ClassType.GetProperties();
+                foreach (PropertyInfo item in PropertyList)
                 {
-                    x.PLCName = "." + name.Split('_')[1];
-                    try
+                    string name = item.Name;
+                    x.VariableName = name;
+                    if (name.StartsWith("Sub"))
                     {
-                        ITcAdsSymbol5 info = (ITcAdsSymbol5)Tcads.ReadSymbolInfo(x.PLCName);
-                        x.streamsize = info.Size;
-                        if(info.TypeName.StartsWith("ARRAY"))
+                        x.PLCName = "." + name.Split('_')[1];
+                        try
                         {
-                            x.PLCType = info.TypeName.Split(' ')[3];
+                            ITcAdsSymbol5 info = (ITcAdsSymbol5)Tcads.ReadSymbolInfo(x.PLCName);
+                            x.streamsize = info.Size;
+                            if (info.TypeName.StartsWith("ARRAY"))
+                            {
+                                x.PLCType = info.TypeName.Split(' ')[3];
+                            }
+                            else
+                            {
+                                x.PLCType = info.TypeName;
+                            }
+                            AddSubValue(x);
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            x.PLCType = info.TypeName;
+                            ErrorFile.ErrorLog(ex.Message, Logfilepath);
                         }
-                        AddSubValue(x);
-                    }
-                    catch
-                    {
-
                     }
                 }
-            }
+            });
+            
         }
     }
 }

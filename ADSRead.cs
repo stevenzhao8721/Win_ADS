@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LogFunc;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,8 +23,9 @@ namespace Win_ADS
                 Tcads.DeleteVariableHandle(handle);
                 return returnData;
             }
-            catch
+            catch(Exception ex)
             {
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
                 return default;
             }
 
@@ -39,8 +41,9 @@ namespace Win_ADS
                 Tcads.DeleteVariableHandle(handle);
                 return returnData;
             }
-            catch
+            catch(Exception ex)
             {
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
                 return default;
             }
         }
@@ -70,8 +73,9 @@ namespace Win_ADS
                 }
                 return Curvearray;
             }
-            catch
+            catch (Exception ex)
             {
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
                 return null;
             }
         }
