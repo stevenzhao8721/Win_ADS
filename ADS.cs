@@ -15,7 +15,7 @@ using LogFunc;
 
 namespace Win_ADS
 {
-    public class ADS
+    public static class ADS
     {
         private static bool ConnectOneTime = false;
         private static AdsStream[] adsStreams;
@@ -68,6 +68,14 @@ namespace Win_ADS
                 }
             }
             return ConnectOneTime;
+        }
+
+        public static void Disconnect()
+        {
+            if(Tcads!=null)
+            {
+                Tcads.Dispose();
+            }
         }
 
         private static void ads_callback(object sender, AdsNotificationEventArgs e)
