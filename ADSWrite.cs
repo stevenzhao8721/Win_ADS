@@ -9,11 +9,11 @@ using TwinCAT.Ads;
 
 namespace Win_ADS
 {
-    public static class ADSWrite
+    public class ADSWrite
     {
-        static TcAdsClient Tcads = ADS.Tcads;
-        private static List<string> TobeResetList = new List<string>();
-        private static bool ReadyToReset = false;
+        TcAdsClient Tcads = ADS.Tcads;
+        private List<string> TobeResetList = new List<string>();
+        private bool ReadyToReset = false;
         /// <summary>
         /// 
         /// </summary>
@@ -21,72 +21,98 @@ namespace Win_ADS
         /// <param name="PLCName">用nameof(属性名),"前提是属性名和PLC变量名一致"</param>
         /// <param name="value"></param>
         /// <param name="AutoReset">是否自动复位,只对bool量有效</param>
-        public static void WriteSingle(string PLCName, object value, bool AutoReset = false)
+        public bool WriteSingle<T>(string PLCName, T value, bool AutoReset = false)
         {
-            string plcname = "." + PLCName;
+            string plcname = "." + PLCName;           
             try
             {
                 ITcAdsSymbol5 info = (ITcAdsSymbol5)Tcads.ReadSymbolInfo(plcname);
                 int handle = Tcads.CreateVariableHandle(plcname);
-                switch (info.TypeName)
+                if (typeof(T) != typeof(string))
                 {
-                    case "SINT":
-                        sbyte sbdata = Convert.ToSByte(value);
-                        Tcads.WriteAny(handle, sbdata);
-                        break;
-                    case "BYTE":
-                        byte bydata = Convert.ToByte(value);
-                        Tcads.WriteAny(handle, bydata);
-                        break;
-                    case "BOOL":
-                        bool bdata = Convert.ToBoolean(value);
-                        Tcads.WriteAny(handle, bdata);
-                        if (AutoReset)
-                            TobeResetList.Add(plcname);
-                        break;
-                    case "INT":
-                        short int16data = Convert.ToInt16(value);
-                        Tcads.WriteAny(handle, int16data);
-                        break;
-                    case "UINT":
-                        ushort uint16data = Convert.ToUInt16(value);
-                        Tcads.WriteAny(handle, uint16data);
-                        break;
-                    case "REAL":
-                        float floatdata = Convert.ToSingle(value);
-                        Tcads.WriteAny(handle, floatdata);
-                        break;
-                    case "DINT":
-                        int intdata = Convert.ToInt32(value);
-                        Tcads.WriteAny(handle, intdata);
-                        break;
-                    case "UDINT":
-                        uint uintdata = Convert.ToUInt32(value);
-                        Tcads.WriteAny(handle, uintdata);
-                        break;
-                    case "LINT":
-                        long longdata = Convert.ToInt64(value);
-                        Tcads.WriteAny(handle, longdata);
-                        break;
-                    case "ULINT":
-                        ulong ulongdata = Convert.ToUInt64(value);
-                        Tcads.WriteAny(handle, ulongdata);
-                        break;
-                    case "LREAL":
-                        double doubledata = Convert.ToDouble(value);
-                        Tcads.WriteAny(handle, doubledata);
-                        break;
+                    Tcads.WriteAny(handle, value);                   
                 }
+                else
+                {
+                    switch (info.TypeName)
+                    {
+                        case "SINT":
+                            sbyte sbdata = Convert.ToSByte(value);
+                            Tcads.WriteAny(handle, sbdata);
+                            break;
+                        case "BYTE":
+                            byte bydata = Convert.ToByte(value);
+                            Tcads.WriteAny(handle, bydata);
+                            break;
+                        case "BOOL":
+                            bool bdata = Convert.ToBoolean(value);
+                            Tcads.WriteAny(handle, bdata);
+                            if (AutoReset)
+                                TobeResetList.Add(plcname);
+                            break;
+                        case "INT":
+                            short int16data = Convert.ToInt16(value);
+                            Tcads.WriteAny(handle, int16data);
+                            break;
+                        case "UINT":
+                            ushort uint16data = Convert.ToUInt16(value);
+                            Tcads.WriteAny(handle, uint16data);
+                            break;
+                        case "REAL":
+                            float floatdata = Convert.ToSingle(value);
+                            Tcads.WriteAny(handle, floatdata);
+                            break;
+                        case "DINT":
+                            int intdata = Convert.ToInt32(value);
+                            Tcads.WriteAny(handle, intdata);
+                            break;
+                        case "UDINT":
+                            uint uintdata = Convert.ToUInt32(value);
+                            Tcads.WriteAny(handle, uintdata);
+                            break;
+                        case "LINT":
+                            long longdata = Convert.ToInt64(value);
+                            Tcads.WriteAny(handle, longdata);
+                            break;
+                        case "ULINT":
+                            ulong ulongdata = Convert.ToUInt64(value);
+                            Tcads.WriteAny(handle, ulongdata);
+                            break;
+                        case "LREAL":
+                            double doubledata = Convert.ToDouble(value);
+                            Tcads.WriteAny(handle, doubledata);
+                            break;
+                    }
+                }                
                 Tcads.DeleteVariableHandle(handle);
+                return true;
             }
             catch (Exception ex)
             {
                 ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
-
+                return false;
             }
         }
 
-        private static void WriteSingleprivate(string PLCName, bool value)
+        public bool WriteString(string PLCName, string value)
+        {
+            try
+            {
+                int handle = Tcads.CreateVariableHandle(PLCName);
+                Tcads.WriteAny(handle, value, new int[] { 20 });
+                Tcads.DeleteVariableHandle(handle);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
+                return false;
+            }
+
+
+        }
+
+        private void WriteSingleprivate(string PLCName, bool value)
         {
             try
             {
@@ -101,7 +127,7 @@ namespace Win_ADS
             }
         }
 
-        public async static Task<bool> WriteArrayAsync(string PLCName, object[] value)
+        public async Task<bool> WriteArrayAsync<T>(string PLCName, T[] value)
         {
             string plcname = "." + PLCName;
             return await Task.Run(() =>
@@ -113,108 +139,116 @@ namespace Win_ADS
                     int handle = Tcads.CreateVariableHandle(plcname);
                     int length = value.Length;
                     int i = 0;
-                    switch (plctype)
+                    if (typeof(T) != typeof(string))
                     {
-                        case "SINT":
-                            sbyte[] sbdata = new sbyte[length];
-                            foreach (object svalue in value)
-                            {
-                                sbdata[i] = Convert.ToSByte(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, sbdata);
-                            break;
-                        case "BYTE":
-                            byte[] bydata = new byte[length];
-                            foreach (object svalue in value)
-                            {
-                                bydata[i] = Convert.ToByte(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, bydata);
-                            break;
-                        case "BOOL":
-                            bool[] bdata = new bool[length];
-                            foreach (object svalue in value)
-                            {
-                                bdata[i] = Convert.ToBoolean(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, bdata);
-                            break;
-                        case "INT":
-                            short[] int16data = new short[length];
-                            foreach (object svalue in value)
-                            {
-                                int16data[i] = Convert.ToInt16(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, int16data);
-                            break;
-                        case "UINT":
-                            ushort[] uint16data = new ushort[length];
-                            foreach (object svalue in value)
-                            {
-                                uint16data[i] = Convert.ToUInt16(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, uint16data);
-                            break;
-                        case "REAL":
-                            float[] floatdata = new float[length];
-                            foreach (object svalue in value)
-                            {
-                                floatdata[i] = Convert.ToSingle(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, floatdata);
-                            break;
-                        case "DINT":
-                            int[] intdata = new int[length];
-                            foreach (object svalue in value)
-                            {
-                                intdata[i] = Convert.ToInt32(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, intdata);
-                            break;
-                        case "UDINT":
-                            uint[] uintdata = new uint[length];
-                            foreach (object svalue in value)
-                            {
-                                uintdata[i] = Convert.ToUInt32(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, uintdata);
-                            break;
-                        case "LINT":
-                            long[] longdata = new long[length];
-                            foreach (object svalue in value)
-                            {
-                                longdata[i] = Convert.ToInt64(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, longdata);
-                            break;
-                        case "ULINT":
-                            ulong[] ulongdata = new ulong[length];
-                            foreach (object svalue in value)
-                            {
-                                ulongdata[i] = Convert.ToUInt64(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, ulongdata);
-                            break;
-                        case "LREAL":
-                            double[] doubledata = new double[length];
-                            foreach (object svalue in value)
-                            {
-                                doubledata[i] = Convert.ToDouble(svalue);
-                                i++;
-                            }
-                            Tcads.WriteAny(handle, doubledata);
-                            break;
+                        Tcads.WriteAny(handle, value);
                     }
+                    else
+                    {
+                        switch (plctype)
+                        {
+                            case "SINT":
+                                sbyte[] sbdata = new sbyte[length];
+                                foreach (T svalue in value)
+                                {
+                                    sbdata[i] = Convert.ToSByte(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, sbdata);
+                                break;
+                            case "BYTE":
+                                byte[] bydata = new byte[length];
+                                foreach (T svalue in value)
+                                {
+                                    bydata[i] = Convert.ToByte(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, bydata);
+                                break;
+                            case "BOOL":
+                                bool[] bdata = new bool[length];
+                                foreach (T svalue in value)
+                                {
+                                    bdata[i] = Convert.ToBoolean(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, bdata);
+                                break;
+                            case "INT":
+                                short[] int16data = new short[length];
+                                foreach (T svalue in value)
+                                {
+                                    int16data[i] = Convert.ToInt16(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, int16data);
+                                break;
+                            case "UINT":
+                                ushort[] uint16data = new ushort[length];
+                                foreach (T svalue in value)
+                                {
+                                    uint16data[i] = Convert.ToUInt16(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, uint16data);
+                                break;
+                            case "REAL":
+                                float[] floatdata = new float[length];
+                                foreach (T svalue in value)
+                                {
+                                    floatdata[i] = Convert.ToSingle(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, floatdata);
+                                break;
+                            case "DINT":
+                                int[] intdata = new int[length];
+                                foreach (T svalue in value)
+                                {
+                                    intdata[i] = Convert.ToInt32(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, intdata);
+                                break;
+                            case "UDINT":
+                                uint[] uintdata = new uint[length];
+                                foreach (T svalue in value)
+                                {
+                                    uintdata[i] = Convert.ToUInt32(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, uintdata);
+                                break;
+                            case "LINT":
+                                long[] longdata = new long[length];
+                                foreach (T svalue in value)
+                                {
+                                    longdata[i] = Convert.ToInt64(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, longdata);
+                                break;
+                            case "ULINT":
+                                ulong[] ulongdata = new ulong[length];
+                                foreach (T svalue in value)
+                                {
+                                    ulongdata[i] = Convert.ToUInt64(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, ulongdata);
+                                break;
+                            case "LREAL":
+                                double[] doubledata = new double[length];
+                                foreach (T svalue in value)
+                                {
+                                    doubledata[i] = Convert.ToDouble(svalue);
+                                    i++;
+                                }
+                                Tcads.WriteAny(handle, doubledata);
+                                break;
+                        }
+                    }
+                    
                     Tcads.DeleteVariableHandle(handle);
                     return true;
                 }
@@ -232,7 +266,7 @@ namespace Win_ADS
         /// </summary>
         /// <param name="enable"></param>
         /// <param name="settime"></param>
-        public static void EnableAutoReset(bool enable = true, int settime = 1000)
+        public void EnableAutoReset(bool enable = true, int settime = 1000)
         {
             Timer AutoResetSignal = new Timer(settime);
             AutoResetSignal.Enabled = true;
@@ -252,7 +286,7 @@ namespace Win_ADS
             
         }
 
-        private static void AutoReset(object sender, ElapsedEventArgs e)
+        private void AutoReset(object sender, ElapsedEventArgs e)
         {
             if (TobeResetList.Count > 0)
             {

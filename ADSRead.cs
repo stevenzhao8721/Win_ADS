@@ -10,10 +10,10 @@ using TwinCAT.Ads;
 
 namespace Win_ADS
 {
-    public static class ADSRead
+    public class ADSRead
     {
-        static TcAdsClient Tcads = ADS.Tcads;
-        public async static Task<T[]> ReadArray<T>(string PLCName, int size)
+        TcAdsClient Tcads = ADS.Tcads;
+        public async Task<T[]> ReadArray<T>(string PLCName, int size)
         {
             string plcname = "." + PLCName;
             return await Task.Run(() =>
@@ -33,7 +33,7 @@ namespace Win_ADS
             });                       
         }
 
-        public static T ReadSingle<T>(string PLCName)
+        public T ReadSingle<T>(string PLCName)
         {
             string plcname = "." + PLCName;
             try
@@ -55,7 +55,7 @@ namespace Win_ADS
         /// <param name="PLCName"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        public static float[] ReadArrayValue_Real(string PLCName, int size)
+        public float[] ReadArrayValue_Real(string PLCName, int size)
         {
             try
             {
@@ -74,6 +74,22 @@ namespace Win_ADS
                     Curvearray[i] = binRead.ReadSingle();
                 }
                 return Curvearray;
+            }
+            catch (Exception ex)
+            {
+                ErrorFile.ErrorLog(ex.Message, ADS.Logfilepath);
+                return null;
+            }
+        }
+
+        public string ReadString(string PLCName)
+        {
+            try
+            {
+                int handle = Tcads.CreateVariableHandle(PLCName);
+                string value = Tcads.ReadAny(handle, typeof(string), new int[] { 20 }).ToString();
+                Tcads.DeleteVariableHandle(handle);
+                return value;
             }
             catch (Exception ex)
             {
